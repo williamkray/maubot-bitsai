@@ -6,8 +6,8 @@ their own Datadog account, and Bits only sees what that user can see.
 
 ## Setup
 
-1. Build the plugin with `mbc build` (or take the `.mbp` from a CI run) and upload it in the
-   maubot admin UI.
+1. Download the `.mbp` from [Releases](https://github.com/williamkray/maubot-bitsai/releases)
+   (or build it with `mbc build`) and upload it in the maubot admin UI.
 2. Create an instance (it needs a database).
 3. Set `security.token_encryption_key` in the instance config. It encrypts stored Datadog tokens:
 
