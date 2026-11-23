@@ -1,0 +1,21 @@
+# Local integration testing: Synapse + maubot.
+# Data lives in ./data (gitignored). See docker/README.md for setup steps.
+
+services:
+  synapse:
+    image: matrixdotorg/synapse:latest
+    volumes:
+      - ./data/synapse:/data
+    ports:
+      - "8008:8008"
+    restart: unless-stopped
+
+  maubot:
+    image: dock.mau.dev/maubot/maubot:latest
+    depends_on:
+      - synapse
+    volumes:
+      - ./data/maubot:/data
+    ports:
+      - "29316:29316"
+    restart: unless-stopped

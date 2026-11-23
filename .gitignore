@@ -1,0 +1,33 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+*.eggs/
+*.mbp
+*.mbc
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local secrets and config
+.env
+*.env
+
+# Local spike (throwaway verification scripts, captures) and Docker test data
+spike/
+docker/data/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

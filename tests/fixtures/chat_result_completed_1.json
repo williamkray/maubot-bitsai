@@ -1,0 +1,11 @@
+{
+  "elapsed": 19.11795973777771,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"task_id\": \"8471ddf4-c443-5c38-963d-95cea95676b6\", \"conversation_id\": \"ce4523e4-e7c6-5865-908a-f70ff44abcf7\", \"status\": \"completed\", \"message\": \"None. All N monitors in the org are currently **OK**. I found no monitors in Alert, Warn or No Data.\\n\\nThey include <REDACTED_LIST>.\", \"error_code\": null, \"error_message\": null, \"pending_action\": null, \"next_action\": null}"
+      }
+    ]
+  }
+}

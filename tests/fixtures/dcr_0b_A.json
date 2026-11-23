@@ -1,0 +1,18 @@
+{
+  "status": 201,
+  "body": {
+    "client_id": "51ea5567-28b8-4c79-9a7d-e70239b14811",
+    "client_name": "maubot-bitsai spike 0b A (test, safe to delete)",
+    "redirect_uris": [
+      "http://localhost:8765/callback"
+    ],
+    "token_endpoint_auth_method": "none",
+    "grant_types": [
+      "authorization_code",
+      "refresh_token"
+    ],
+    "response_types": [
+      "code"
+    ]
+  }
+}

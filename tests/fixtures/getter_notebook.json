@@ -1,0 +1,236 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/notebooks/1000",
+    "params": null,
+    "body": null
+  },
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json",
+    "X-RateLimit-Limit": "300",
+    "X-RateLimit-Remaining": "299"
+  },
+  "body": {
+    "data": {
+      "type": "notebooks",
+      "id": 1000,
+      "attributes": {
+        "name": "Alice Dec 04 2025 11:49",
+        "cells": [
+          {
+            "type": "notebook_cells",
+            "id": "la49vtcq",
+            "attributes": {
+              "definition": {
+                "type": "markdown",
+                "text": "<REDACTED_TEXT len=341>"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "g42f3gxd",
+            "attributes": {
+              "definition": {
+                "query": {
+                  "data_source": "logs",
+                  "storage": "hot",
+                  "name": "datasource_1",
+                  "columns": [
+                    {
+                      "column": "timestamp",
+                      "type": "timestamp"
+                    },
+                    {
+                      "column": "host",
+                      "type": "string"
+                    },
+                    {
+                      "column": "service",
+                      "type": "string"
+                    },
+                    {
+                      "column": "message",
+                      "type": "string"
+                    }
+                  ],
+                  "indexes": []
+                },
+                "type": "analysis_data_source"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "yeet9wv5",
+            "attributes": {
+              "definition": {
+                "type": "markdown",
+                "text": "<REDACTED_TEXT len=191>"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "ol99cqxg",
+            "attributes": {
+              "definition": {
+                "query": {
+                  "data_source": "analysis_dataset",
+                  "name": "analysis_1",
+                  "query": {
+                    "type": "sql_analysis",
+                    "sql_query": "SELECT * FROM datasource_1"
+                  }
+                },
+                "type": "analysis_sql"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "3zrj4it9",
+            "attributes": {
+              "definition": {
+                "type": "markdown",
+                "text": "<REDACTED_TEXT len=72>"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "i7d2kgvu",
+            "attributes": {
+              "definition": {
+                "query": {
+                  "data_source": "analysis_dataset",
+                  "name": "transformation_1",
+                  "query": {
+                    "type": "structured_analysis",
+                    "source_dataset": "analysis_1",
+                    "transformations": []
+                  }
+                },
+                "type": "analysis_transformation"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "x7ewpzl8",
+            "attributes": {
+              "definition": {
+                "type": "markdown",
+                "text": "<REDACTED_TEXT len=103>"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "dtr504al",
+            "attributes": {
+              "definition": {
+                "type": "toplist",
+                "requests": [
+                  {
+                    "request_type": "local_dataset",
+                    "response_format": "tabular",
+                    "query": {
+                      "type": "structured_analysis",
+                      "source_dataset": "transformation_1",
+                      "transformations": [
+                        {
+                          "type": "filter",
+                          "filter": ""
+                        },
+                        {
+                          "type": "aggregation",
+                          "compute": [
+                            {
+                              "aggregation": "count",
+                              "column": ""
+                            }
+                          ],
+                          "group_by": []
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "split_by": {
+                "keys": [],
+                "tags": []
+              },
+              "time": null
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "2kb321ju",
+            "attributes": {
+              "definition": {
+                "type": "markdown",
+                "text": "<br>\n\n<br>"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "on9qw4cs",
+            "attributes": {
+              "definition": {
+                "query": {
+                  "data_source": "analysis_dataset",
+                  "name": "untitled_feb_19_08_0_vh7i1jae",
+                  "query": {
+                    "type": "sql_analysis",
+                    "sql_query": "SELECT id,\n  name,\n  hostname,\n  orchestrator,\n  type,\n  image,\n  cpu_limit,\n  memory_limit,\n  tags\nFROM dd.containers\nORDER BY hostname,\n  name;"
+                  }
+                },
+                "type": "analysis_sql"
+              }
+            }
+          },
+          {
+            "type": "notebook_cells",
+            "id": "8zu41ier",
+            "attributes": {
+              "definition": {
+                "type": "markdown",
+                "text": "<br>"
+              }
+            }
+          }
+        ],
+        "time": {
+          "live_span": "1h"
+        },
+        "metadata": {
+          "take_snapshots": false,
+          "is_template": false,
+          "is_favorite": false,
+          "type": null
+        },
+        "template_variables": [],
+        "dropdown_templates": [],
+        "status": "published",
+        "modified": "2026-02-19T16:02:58.677593+00:00",
+        "created": "2025-12-04T19:49:40.541489+00:00",
+        "deleted": null,
+        "tags": [],
+        "author": {
+          "name": "Alice Example",
+          "handle": "<REDACTED_EMAIL>",
+          "email": "<REDACTED_EMAIL>",
+          "icon": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=retro&s=48",
+          "title": "",
+          "verified": true,
+          "disabled": false,
+          "status": "Active"
+        }
+      }
+    }
+  }
+}

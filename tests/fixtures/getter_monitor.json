@@ -1,0 +1,55 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/monitor/100000001",
+    "params": null,
+    "body": null
+  },
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json",
+    "X-RateLimit-Limit": "3000",
+    "X-RateLimit-Remaining": "2999"
+  },
+  "body": {
+    "id": 100000001,
+    "org_id": 1000000,
+    "type": "query alert",
+    "name": "CPU is high on {{host.name}}!",
+    "message": "<REDACTED_TEXT len=343>",
+    "tags": [
+      "team:sysadmins"
+    ],
+    "query": "avg(last_15m):100 - system.cpu.idle{env:prod} by {host} > 97",
+    "options": {
+      "thresholds": {
+        "critical": 97.0
+      },
+      "notify_audit": false,
+      "threshold_windows": null,
+      "on_missing_data": "show_and_notify_no_data",
+      "include_tags": true,
+      "new_group_delay": 60,
+      "notification_preset_name": "hide_handles",
+      "renotify_interval": 0,
+      "escalation_message": "",
+      "silenced": {}
+    },
+    "multi": true,
+    "created_at": 1741648110000,
+    "created": "2025-03-10T23:08:30.867523+00:00",
+    "modified": "2026-10-19T16:10:20.686612+00:00",
+    "deleted": null,
+    "priority": 2,
+    "restricted_roles": null,
+    "draft_status": "published",
+    "overall_state_modified": "2026-08-06T19:25:14+00:00",
+    "overall_state": "OK",
+    "creator": {
+      "name": "Alice Example",
+      "email": "<REDACTED_EMAIL>",
+      "handle": "<REDACTED_EMAIL>",
+      "id": 21668308
+    }
+  }
+}

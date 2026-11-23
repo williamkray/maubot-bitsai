@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v2/bits-ai/investigations",
+    "params": null,
+    "body": {
+      "data": {
+        "type": "trigger_investigation_request",
+        "attributes": {
+          "trigger": {
+            "type": "general_investigation",
+            "general_investigation": {
+              "description": "maubot-bitsai integration spike: briefly summarize overall org health over the last hour. Test only."
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/vnd.api+json"
+  },
+  "body": {
+    "data": {
+      "id": "1e1fcc97-6b6a-565b-b54e-38ec6f19c692",
+      "type": "trigger_investigation_response",
+      "attributes": {
+        "investigation_id": "3ae48e9f-235c-510e-ba29-81575eff87e5"
+      }
+    }
+  }
+}

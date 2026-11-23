@@ -1,0 +1,58 @@
+{
+  "protected_resource_root": {
+    "resource": "https://mcp.datadoghq.com",
+    "authorization_servers": [
+      "https://mcp.datadoghq.com/v1/mcp"
+    ],
+    "bearer_methods_supported": [
+      "header"
+    ]
+  },
+  "protected_resource_path": {
+    "resource": "https://mcp.datadoghq.com/v1/mcp",
+    "authorization_servers": [
+      "https://mcp.datadoghq.com/v1/mcp"
+    ],
+    "bearer_methods_supported": [
+      "header"
+    ]
+  },
+  "authorization_server": {
+    "issuer": "https://mcp.datadoghq.com/v1/mcp",
+    "authorization_endpoint": "https://app.datadoghq.com/oauth2/v1/authorize",
+    "token_endpoint": "https://app.datadoghq.com/api/v2/oauth2/token",
+    "oauth_version": "2.1",
+    "response_types_supported": [
+      "code"
+    ],
+    "grant_types_supported": [
+      "authorization_code",
+      "refresh_token",
+      "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    ],
+    "authorization_grant_profiles_supported": [
+      "urn:ietf:params:oauth:grant-profile:id-jag"
+    ],
+    "scopes_supported": [
+      "mcp_all"
+    ],
+    "code_challenge_methods_supported": [
+      "S256"
+    ],
+    "pkce_required": true,
+    "registration_endpoint": "https://app.datadoghq.com/api/v2/oauth2/register",
+    "token_endpoint_auth_methods_supported": [
+      "none"
+    ]
+  },
+  "openid_configuration_status": 404,
+  "unauthenticated_mcp_post": {
+    "status": 401,
+    "www_authenticate": "Bearer resource_metadata=\"https://mcp.datadoghq.com/.well-known/oauth-protected-resource/v1/mcp\"",
+    "body": {
+      "errors": [
+        "Unauthorized"
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+datadog:
+  site: datadoghq.com          # datadoghq.com, us3.datadoghq.com, us5.datadoghq.com, datadoghq.eu, ap1.datadoghq.com, ap2.datadoghq.com, uk1.datadoghq.com
+  subdomain: ""                # optional custom org subdomain (e.g. "myorg" for myorg.datadoghq.com), used for links/OAuth
+  mcp_toolsets: [core, chat, investigator]
+security:
+  token_encryption_key: ""     # REQUIRED. 32 random bytes, base64. Generate: python3 -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"
+auth:
+  allow_pat_login: true        # allow `!bits login token` with a Datadog Personal Access Token (DM only)
+  oauth_client_name: ""        # default: derived from this instance's public URL; must be unique per deployment
+  # How `!bits login` gets the OAuth result back. Datadog only redirects to localhost, so:
+  #   auto     - "callback" if maubot's public_url is localhost, else "paste" (recommended)
+  #   paste    - browser lands on an unloadable localhost page; user pastes its address to the bot
+  #   callback - Datadog redirects straight to this maubot (only works on a localhost public_url)
+  oauth_redirect: auto
+chat:
+  command: bits
+  # Answer every message in a 1:1 room with the bot, no mention needed. Leave this off if
+  # other maubot plugins share this bot account: their DMs look identical to Bits DMs, so
+  # Bits would answer messages meant for them.
+  respond_in_dms: false
+  respond_to_mentions: true
+  timeout_seconds: 180
+investigations:
+  poll_max_minutes: 30
+rate_limits:
+  per_user_per_minute: 6
+  per_room_per_minute: 20
+unfurl:
+  default_enabled: false
+admins: []                     # Matrix user IDs allowed to run bot-wide admin commands

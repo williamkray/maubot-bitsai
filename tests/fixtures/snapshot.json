@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/graph/snapshot",
+    "params": {
+      "metric_query": "avg:system.cpu.user{*}",
+      "start": "1794506999",
+      "end": "1794510599"
+    },
+    "body": null
+  },
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json",
+    "X-RateLimit-Limit": "60",
+    "X-RateLimit-Remaining": "59"
+  },
+  "body": {
+    "snapshot_url": "https://app.datadoghq.com/api/v2/snapshot/view/public/2y/15c3f73b-3396-5339-bdb9-a300137fad6a/1794510599731-ddcd7079-9566-5be8-8400-f19740b66477.png",
+    "graph_def": "{\"requests\": [{\"q\": \"avg:system.cpu.user{*}\"}]}",
+    "metric_query": "avg:system.cpu.user{*}"
+  }
+}

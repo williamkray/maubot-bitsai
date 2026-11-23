@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maubot-bitsai"
+version = "0.1.0"
+description = "Bits AI for Matrix, as a maubot plugin"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+# No runtime dependencies are declared here on purpose: maubot does not pip-install
+# plugin dependencies. Runtime deps come from maubot itself (mautrix, aiohttp, yarl,
+# attrs, pycryptodome).
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["maubot>=0.5", "pytest", "pytest-asyncio", "ruff", "pycryptodome"]
+
+[tool.setuptools]
+packages = ["bitsai"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["spike"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

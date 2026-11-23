@@ -1,0 +1,17 @@
+{
+  "args": {
+    "message": "Which monitors in this org are currently alerting? Answer briefly.",
+    "telemetry": {
+      "intent": "maubot-bitsai integration spike: verify chat semantics"
+    }
+  },
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"conversation_id\": \"ce4523e4-e7c6-5865-908a-f70ff44abcf7\", \"error_code\": null, \"error_message\": null, \"message\": null, \"next_action\": {\"arguments\": {\"task_id\": \"8471ddf4-c443-5c38-963d-95cea95676b6\", \"conversation_id\": \"ce4523e4-e7c6-5865-908a-f70ff44abcf7\"}, \"poll_after_seconds\": 2, \"tool\": \"get_chat_message_result\"}, \"pending_action\": null, \"status\": \"queued\", \"task_id\": \"8471ddf4-c443-5c38-963d-95cea95676b6\"}"
+      }
+    ]
+  },
+  "elapsed": 0.23430085182189941
+}

@@ -1,0 +1,149 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/dashboard/abc-def-ghi",
+    "params": null,
+    "body": null
+  },
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json",
+    "X-RateLimit-Limit": "600",
+    "X-RateLimit-Remaining": "599"
+  },
+  "body": {
+    "id": "abc-def-ghi",
+    "title": "JM/MM Dashboard",
+    "description": "<REDACTED_TEXT len=144>",
+    "author_handle": "<REDACTED_EMAIL>",
+    "author_name": "Alice Example",
+    "layout_type": "ordered",
+    "url": "/dashboard/abc-def-ghi/jmmm-dashboard",
+    "template_variables": [],
+    "widgets": [
+      {
+        "id": 8003366954605513,
+        "definition": {
+          "title": "",
+          "title_size": "16",
+          "title_align": "left",
+          "type": "slo",
+          "slo_id": "16779a763c99557a94997914ff8ec1ef",
+          "view_type": "detail",
+          "view_mode": "overall",
+          "time_windows": [
+            "90d",
+            "30d",
+            "7d"
+          ],
+          "show_error_budget": true
+        },
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 12,
+          "height": 4
+        }
+      },
+      {
+        "id": 5108734629098964,
+        "definition": {
+          "title": "Uptime Checks",
+          "background_color": "yellow",
+          "show_title": true,
+          "type": "group",
+          "layout_type": "ordered",
+          "widgets": [
+            {
+              "id": 2763027756666787,
+              "definition": {
+                "title": "example.org Service Status",
+                "type": "manage_status",
+                "display_format": "countsAndList",
+                "color_preference": "background",
+                "hide_zero_counts": true,
+                "show_status": true,
+                "last_triggered_format": "relative",
+                "query": "[Synthetics] tag:org:mm",
+                "sort": "status,asc",
+                "count": 50,
+                "start": 0,
+                "summary_type": "monitors",
+                "show_priority": false,
+                "show_last_triggered": false
+              },
+              "layout": {
+                "x": 0,
+                "y": 0,
+                "width": 3,
+                "height": 5
+              }
+            },
+            {
+              "id": 4749617758595672,
+              "definition": {
+                "title": "Job Machine Service Status",
+                "type": "manage_status",
+                "display_format": "countsAndList",
+                "color_preference": "background",
+                "hide_zero_counts": true,
+                "show_status": true,
+                "last_triggered_format": "relative",
+                "query": "[Synthetics] tag:org:jm",
+                "sort": "status,asc",
+                "count": 50,
+                "start": 0,
+                "summary_type": "monitors",
+                "show_priority": false,
+                "show_last_triggered": false
+              },
+              "layout": {
+                "x": 3,
+                "y": 0,
+                "width": 3,
+                "height": 5
+              }
+            },
+            {
+              "id": 1171978822939528,
+              "definition": {
+                "title": "Shared Service Status",
+                "type": "manage_status",
+                "display_format": "countsAndList",
+                "color_preference": "background",
+                "hide_zero_counts": true,
+                "show_status": true,
+                "last_triggered_format": "relative",
+                "query": "[Synthetics] tag:org:shared",
+                "sort": "status,asc",
+                "count": 50,
+                "start": 0,
+                "summary_type": "monitors",
+                "show_priority": false,
+                "show_last_triggered": false
+              },
+              "layout": {
+                "x": 6,
+                "y": 0,
+                "width": 3,
+                "height": 5
+              }
+            }
+          ]
+        },
+        "layout": {
+          "x": 0,
+          "y": 4,
+          "width": 12,
+          "height": 6
+        }
+      }
+    ],
+    "notify_list": [],
+    "created_at": "2025-03-07T00:19:59.826012+00:00",
+    "modified_at": "2026-04-16T02:07:40.317533+00:00",
+    "experience_type": "default",
+    "reflow_type": "fixed",
+    "restricted_roles": []
+  }
+}

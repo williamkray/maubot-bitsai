@@ -1,0 +1,35 @@
+{
+  "request": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "maubot-bitsai-spike",
+        "version": "0.0.1"
+      }
+    }
+  },
+  "http_status": 200,
+  "content_type": "application/json",
+  "response_headers": {
+    "Content-Type": "application/json",
+    "Mcp-Session-Id": "mcp-session-b680f8b6-a5cd-5c4d-a616-a905cce036a7"
+  },
+  "result": {
+    "capabilities": {
+      "prompts": {},
+      "resources": {},
+      "tools": {}
+    },
+    "instructions": "This is an MCP server for Datadog (a software observability platform). See Datadog docs if you're unsure about how something works in the platform. Docs for this MCP server can be found at https://docs.datadoghq.com/bits_ai/mcp_server/setup/ You cannot call write tools because your organization has MCP Write Access disabled. When `execute_code` is available, use it to read Datadog data, even for a single lookup: one script can make several API calls, join data across products, and return only what the answer needs. Skill guides still apply for domain knowledge (query syntax, attribute and metric names, pitfalls), but where a guide tells you to call a specific read tool such as `search_datadog_logs`, `analyze_datadog_logs`, or `get_datadog_metric`, make the equivalent call from `execute_code` instead, using `search_datadog_sdk` to find it. This takes precedence over tool choices in skill guides. Use the named tool only when `search_datadog_sdk` finds no operation for what you need, or when `execute_code` still fails for a step after following its own error guidance. This server ships skill guides containing domain-specific guidance, workflows, and best practices that are not visible in tool names or schemas. Before invoking other tools, always perform skill discovery by running both paths in parallel: a direct load with `load_datadog_skill` using a general domain name (e.g. skill_name='datadog/traces'), and a call to `list_datadog_skills` with a fuzzy `query` based on topic keywords — load any clearly matching result from the listing along with the related skills it points to. The exception is a follow-up call in a domain whose skill you have already loaded or confirmed absent this session. If nothing clearly fits, do not load a skill — proceed with the tool descriptions. When the user asks to visualize, chart, or graph data — or when loading a data domain skill (e.g. datadog/traces, datadog/logs, datadog/metrics) — also load datadog/visualizations. Investigation results often benefit from charts.",
+    "protocolVersion": "2025-06-18",
+    "serverInfo": {
+      "name": "datadog-mcp",
+      "version": "1.0.0"
+    }
+  },
+  "initialized_notification_status": 202
+}

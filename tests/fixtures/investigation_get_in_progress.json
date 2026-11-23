@@ -1,0 +1,28 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v2/bits-ai/investigations/3ae48e9f-235c-510e-ba29-81575eff87e5",
+    "params": null,
+    "body": null
+  },
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/vnd.api+json"
+  },
+  "body": {
+    "data": {
+      "id": "3ae48e9f-235c-510e-ba29-81575eff87e5",
+      "type": "investigation",
+      "attributes": {
+        "agent_run_workflow_id": "3ae48e9f-235c-510e-ba29-81575eff87e5",
+        "conclusions": [],
+        "status": "in progress",
+        "strategy": "react",
+        "title": "<REDACTED_TEXT len=100>"
+      }
+    },
+    "links": {
+      "self": "https://example-org.datadoghq.com/bits-ai/investigations/3ae48e9f-235c-510e-ba29-81575eff87e5"
+    }
+  }
+}
