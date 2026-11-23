@@ -112,3 +112,11 @@ async def test_thread_messages_error_returns_empty():
     m, client = thread_client(raw_msg("$r", "@a:x", "root"), [])
     client.api.request = AsyncMock(side_effect=RuntimeError("boom"))
     assert await m.get_thread_messages(ROOM, "$r") == []
+
+
+async def test_first_reminder_sent_right_after_boot(monkeypatch):
+    # monotonic() is ~seconds since boot on a fresh host/container; must not throttle.
+    monkeypatch.setattr("bitsai.matrix.messenger.time.monotonic", lambda: 5.0)
+    m, client, _ = make(is_dm=False, open_result=(DM, True))
+    await m.notify_login_needed(ROOM, USER)
+    assert [r for r, _ in bodies(client)] == [ROOM]

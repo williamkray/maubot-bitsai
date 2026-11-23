@@ -139,8 +139,11 @@ class MatrixMessenger:
             text = f"Your Matrix account isn't linked to Datadog yet. Run {login} here."
         else:
             # Throttle reminders in shared rooms to avoid spamming everyone.
+            # No 0.0 default: monotonic time starts near zero on a freshly booted host, so
+            # "never notified" would look recent and the first reminder would be dropped.
             now = time.monotonic()
-            if now - self._notified.get(user_id, 0.0) < NOTIFY_COOLDOWN_S:
+            last = self._notified.get(user_id)
+            if last is not None and now - last < NOTIFY_COOLDOWN_S:
                 return
             self._notified[user_id] = now
             dm, created = await self._open_dm(user_id)
