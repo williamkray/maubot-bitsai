@@ -16,6 +16,24 @@ their own Datadog account, and Bits only sees what that user can see.
    ```
 
 4. Set `datadog.site` (and `datadog.subdomain` if your org uses one), then save.
+5. In Datadog, **MCP Access** must be on (Organization Settings > MCP Server), and users need the
+   MCP Read and MCP Write permissions (the Datadog Standard Role has both).
+
+### Sign-in mode
+
+By default (`auto`), Datadog redirects straight back to this maubot after sign-in. A Datadog org
+admin must add this URL under Organization Settings > MCP Server > **MCP OAuth Redirect URLs**:
+
+```
+<maubot public_url>/_matrix/maubot/plugin/<instance id>/oauth/callback
+```
+
+The plugin builds this URL from maubot's `server.public_url`, so that must be your public https
+address (not the default `http://localhost:29316`). The plugin logs the redirect URL it uses at
+startup. If it isn't allow-listed, sign-in fails with "Mismatching redirect URI".
+
+If you can't get the URL allow-listed, set `auth.oauth_redirect: paste`. Datadog then redirects
+to a `localhost` page (always allowed), and the user pastes that page's address to the bot.
 
 ## Configuration
 
@@ -25,7 +43,7 @@ their own Datadog account, and Bits only sees what that user can see.
 | `datadog.subdomain` | `""` | Custom org subdomain, used for sign-in and links |
 | `security.token_encryption_key` | — | **Required.** 32 random bytes, base64-encoded |
 | `auth.allow_pat_login` | `true` | Allow sign-in with a Personal Access Token |
-| `auth.oauth_redirect` | `auto` | `paste` (public maubot) or `callback` (maubot on localhost) |
+| `auth.oauth_redirect` | `auto` | `auto`/`callback`: redirect to this maubot; `paste`: paste-back (see [Sign-in mode](#sign-in-mode)) |
 | `chat.command` | `bits` | Command prefix |
 | `chat.respond_to_mentions` | `true` | Answer when the bot is mentioned |
 | `chat.respond_in_dms` | `false` | Answer every DM message (leave off if other plugins share the bot account) |
@@ -36,9 +54,9 @@ their own Datadog account, and Bits only sees what that user can see.
 
 ## Use
 
-**Sign in** (in a DM with the bot): `!bits login`. Open the link and approve access. Your browser
-then fails to load a `localhost` page; that's expected. Paste that page's full address back to
-the bot. Or use `!bits login token <PAT>`.
+**Sign in** (in a DM with the bot): `!bits login`. Open the link and approve access. In paste-back
+mode your browser then fails to load a `localhost` page; that's expected. Paste that page's full
+address back to the bot. Or use `!bits login token <PAT>`.
 
 | Command | |
 |---|---|

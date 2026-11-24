@@ -7,10 +7,15 @@ security:
 auth:
   allow_pat_login: true        # allow `!bits login token` with a Datadog Personal Access Token (DM only)
   oauth_client_name: ""        # default: derived from this instance's public URL; must be unique per deployment
-  # How `!bits login` gets the OAuth result back. Datadog only redirects to localhost, so:
-  #   auto     - "callback" if maubot's public_url is localhost, else "paste" (recommended)
-  #   paste    - browser lands on an unloadable localhost page; user pastes its address to the bot
-  #   callback - Datadog redirects straight to this maubot (only works on a localhost public_url)
+  # How `!bits login` gets the OAuth result back. Datadog always allows localhost redirects;
+  # any other redirect URL must be allow-listed by a Datadog org admin.
+  #   auto     - same as "callback": redirect to this maubot's public_url
+  #   callback - Datadog redirects straight to this maubot. On a non-localhost public_url, a
+  #              Datadog org admin must first add <public_url>/_matrix/maubot/plugin/<instance_id>/oauth/callback
+  #              under Organization Settings > MCP Server > MCP OAuth Redirect URLs (the exact URL
+  #              is logged at startup). Without that, sign-in fails with "Mismatching redirect URI".
+  #   paste    - fallback if the URL can't be allow-listed: browser lands on an unloadable
+  #              localhost page; user pastes its address to the bot. No Datadog-side setup.
   oauth_redirect: auto
 chat:
   command: bits

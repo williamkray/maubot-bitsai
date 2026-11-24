@@ -94,6 +94,17 @@ Scripts: `common.py` (MCP client prototype + redaction), `rest.py`, `s1..s7_*.py
   redirect; a maubot on a public https URL must use a loopback redirect + paste-back (or PATs).
   Each DCR also echoes only the latest redirect list for the shared client_id.
 
+- **2026-11-24 (docs, not re-tested live): the "fixed allowlist" is an org setting.** Datadog's
+  [MCP setup docs](https://docs.datadoghq.com/mcp_server/setup/) describe an admin-managed list,
+  Organization Settings > MCP Server > **MCP OAuth Redirect URLs** ("enter the URL, and select
+  Add URL"). That explains the result above: loopback URIs are accepted without listing, and our
+  https callback was rejected because the spike org hadn't listed it. Not documented: matching
+  rules (exact vs. prefix/wildcard), and which role may edit it beyond "Administrators".
+  Implication: a public https callback works once an org admin lists the exact callback URL.
+  The plugin's `auto` mode uses that callback; paste-back (`paste`) is the no-setup fallback. Related org toggles: **MCP
+  Access** (off = no MCP for anyone) and **MCP Write Access** (off = write tools hidden); users
+  need `mcp_read`/`mcp_write` (Datadog Standard Role has both).
+
 ## 6. Snapshot and unfurl getters
 - `GET /api/v1/graph/snapshot?metric_query=avg:system.cpu.user{*}&start=..&end=..` with PAT Bearer: 200, `snapshot_url` = `https://app.datadoghq.com/api/v2/snapshot/view/public/2y/<org-uuid>/<ts>-<uuid>.png` (public, unauthenticated image URL, 2y path segment).
 - Monitor `GET /api/v1/monitor/{id}`, dashboard `GET /api/v1/dashboard/{id}`, notebook `GET /api/v1/notebooks/{id}`: 200. Incident `GET /api/v2/incidents/{id}`: 404 `{"errors":[{"title":"Generic Error","detail":"incident not found"}]}` (no incidents). MCP `get_datadog_dashboard` works and returns `url` using the org subdomain.

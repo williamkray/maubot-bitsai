@@ -1,9 +1,11 @@
 """Loopback redirect + paste-back for OAuth sign-in.
 
-Datadog's /oauth2/v1/authorize only accepts loopback redirect URIs for the shared DCR client
-(docs/FINDINGS.md §5), so a maubot on a public https URL can't receive the callback. Instead we
-redirect to a loopback URL nothing serves: the browser shows a connection error, and the user
-pastes the address-bar URL (carrying ``code`` and ``state``) back to the bot in their DM.
+Datadog's /oauth2/v1/authorize accepts loopback redirect URIs by default; any other redirect URI
+must be allow-listed per org by an admin (Organization Settings > MCP Server > MCP OAuth Redirect
+URLs; docs/FINDINGS.md §5). So a maubot on a public https URL can't receive the callback unless the
+org has done that. Paste-back needs no org setup: we redirect to a loopback URL nothing serves,
+the browser shows a connection error, and the user pastes the address-bar URL (carrying ``code``
+and ``state``) back to the bot in their DM.
 
 The code is single-use and useless without the PKCE verifier, which never leaves the bot.
 """

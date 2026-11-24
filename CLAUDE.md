@@ -32,8 +32,9 @@ Design and phase plan: `PLAN.md`. Verified API behaviour: `docs/FINDINGS.md` + `
   shared client_id; PKCE S256 required; send `resource=https://mcp.<site>/v1/mcp`; request scope
   `mcp_all`, but the granted token carries ALL the user's permissions. Access token = JWT, 3600 s.
   Refresh token is long-lived and NOT rotated. Re-run DCR with our redirect_uri before each login.
-  **/authorize only accepts loopback redirect URIs** (any `http://localhost` port/path, registered
-  or not); https callbacks get "Mismatching redirect URI" even right after DCR (FINDINGS §5).
+  **/authorize accepts loopback redirect URIs by default** (any `http://localhost` port/path);
+  any other URI must be in the org's admin-managed allowlist (Organization Settings > MCP Server >
+  MCP OAuth Redirect URLs), else "Mismatching redirect URI". DCR registration doesn't count (§5).
 
 ## maubot gotchas
 - `database_type: asyncpg` (default is legacy sqlalchemy). SQL must work on SQLite and Postgres

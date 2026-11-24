@@ -93,7 +93,8 @@ async def plugin(dd, monkeypatch):
     p.database = db
     p.webapp_url = yarl.URL("https://bot.example/_matrix/maubot/plugin/bits/")
     p.log = logging.getLogger("t")
-    p.config = Cfg(DEFAULTS)
+    # Paste mode: most sign-in tests exercise paste-back; callback tests override it.
+    p.config = Cfg({**DEFAULTS, "auth.oauth_redirect": "paste"})
     await p.start()
     # Point PAT validation at the fake Datadog (links only use site.domain).
     p.site = SimpleNamespace(domain="datadoghq.com",
@@ -213,14 +214,15 @@ async def test_oauth_login_dm_gets_url(plugin):
 PASTED = f"{PASTE_REDIRECT_URI}?code=SECRETCODE&state=SECRETSTATE"
 
 
-def test_public_url_uses_paste_redirect(plugin):
+def test_paste_mode_uses_loopback_redirect(plugin):
     assert plugin.oauth_paste
     assert plugin.oauth._redirect_uri == PASTE_REDIRECT_URI
 
 
 @pytest.mark.parametrize("url,mode,paste", [
     ("http://localhost:29316/_matrix/maubot/plugin/bits/", "auto", False),
-    ("https://bot.example/_matrix/maubot/plugin/bits/", "auto", True),
+    ("https://bot.example/_matrix/maubot/plugin/bits/", "auto", False),
+    ("https://bot.example/_matrix/maubot/plugin/bits/", "paste", True),
     ("http://localhost:29316/_matrix/maubot/plugin/bits/", "paste", True),
     ("https://bot.example/_matrix/maubot/plugin/bits/", "callback", False),
 ])
@@ -753,3 +755,76 @@ async def test_bare_mention_gets_hint_not_ask(plugin, asks):
     await plugin.on_message(evt)
     asks.assert_not_awaited()
     evt.reply.assert_awaited_once()
+
+
+async def test_callback_success_names_the_matrix_account_escaped(plugin):
+    link = SimpleNamespace(mxid="@<b>mallory</b>:x", dd_user_handle="al@x.com")
+    plugin.oauth.complete = AsyncMock(return_value=CompletedLink(link=link, dm_room_id=DM))
+    plugin.factory.forget = MagicMock()
+    resp = await plugin.oauth_callback(req(state="s", code="c"))
+    assert resp.status == 200
+    assert "@&lt;b&gt;mallory&lt;/b&gt;:x" in resp.text
+    assert "<b>mallory</b>" not in resp.text
+
+
+async def test_public_callback_mode_logs_url_to_allowlist(caplog):
+    url = "https://bot.example/_matrix/maubot/plugin/bits/"
+    p = BitsPlugin.__new__(BitsPlugin)
+    p.config = Cfg({**DEFAULTS, "auth.oauth_redirect": "callback"})
+    p.webapp_url = yarl.URL(url)
+    p.log = logging.getLogger("t")
+    p.http = p.database = p.client = MagicMock()
+    p._spawn = MagicMock(side_effect=lambda coro: coro.close())
+    with caplog.at_level(logging.INFO, logger="t"):
+        await p.start()
+    assert any(url + "oauth/callback" in r.getMessage() and "MCP OAuth Redirect URLs"
+               in r.getMessage() for r in caplog.records)
+
+
+async def _started(url, **cfg):
+    p = BitsPlugin.__new__(BitsPlugin)
+    p.config = Cfg({**DEFAULTS, **cfg})
+    p.webapp_url = yarl.URL(url)
+    p.log = logging.getLogger("t")
+    p.http = p.database = p.client = MagicMock()
+    p._spawn = MagicMock(side_effect=lambda coro: coro.close())
+    await p.start()
+    return p
+
+
+async def test_config_save_applies_without_manual_restart():
+    url = "https://bot.example/_matrix/maubot/plugin/bits/"
+    p = await _started(url, **{"auth.oauth_redirect": "paste"})
+    assert p.oauth_paste is True
+    p.config["auth.oauth_redirect"] = "auto"
+    await p.on_external_config_update()
+    assert p.oauth_paste is False
+    assert p.oauth._redirect_uri == url + "oauth/callback"
+
+
+async def test_invalid_config_save_keeps_running_settings(caplog):
+    p = await _started("https://bot.example/_matrix/maubot/plugin/bits/",
+                       **{"auth.oauth_redirect": "paste"})
+    oauth = p.oauth
+    p.config["auth.oauth_redirect"] = "bogus"
+    with caplog.at_level(logging.ERROR, logger="t"):
+        await p.on_external_config_update()
+    assert p.oauth is oauth and p.oauth_paste is True
+    assert any("not applied" in r.getMessage() for r in caplog.records)
+
+
+async def test_startup_logs_redirect_uri(caplog):
+    with caplog.at_level(logging.INFO, logger="t"):
+        await _started("http://localhost:29316/_matrix/maubot/plugin/bits/",
+                       **{"auth.oauth_redirect": "callback"})
+    assert any("redirect_uri=http://localhost:29316/_matrix/maubot/plugin/bits/oauth/callback"
+               in r.getMessage() for r in caplog.records)
+
+
+async def test_paste_mode_log_names_setting_and_callback_url(caplog):
+    url = "https://cog.example/_matrix/maubot/plugin/bits/"
+    with caplog.at_level(logging.INFO, logger="t"):
+        await _started(url, **{"auth.oauth_redirect": "paste"})
+    msg = next(r.getMessage() for r in caplog.records if "OAuth sign-in" in r.getMessage())
+    assert "paste mode (auth.oauth_redirect=paste)" in msg
+    assert url + "oauth/callback" in msg and "public_url" not in msg

@@ -11,6 +11,7 @@ Security-relevant rules implemented here (see PLAN.md "Security requirements"):
 from __future__ import annotations
 
 import asyncio
+import html
 from typing import Any
 
 import aiohttp
@@ -130,26 +131,64 @@ class BitsPlugin(Plugin):
                 t.cancel()
             raise
 
+    async def on_external_config_update(self) -> None:
+        """Apply a config saved in the maubot UI without a manual restart (most settings are
+        only read in ``_start``). An invalid config is not applied: we keep running as before."""
+        self.config.load_and_update()
+        problem = self._config_problem()
+        if problem:
+            self.log.error("New config not applied (%s); still running with the previous "
+                           "settings", problem)
+            return
+        self.log.info("Config changed; restarting to apply it")
+        await self.stop()
+        await self.start()
+
+    def _config_problem(self) -> str | None:
+        """Why ``_start`` would refuse this config, or None."""
+        if self.webapp_url is None:
+            return "bitsai requires `webapp: true` and a maubot public_url"
+        try:
+            SecretBox(self.config["security.token_encryption_key"] or "")
+        except ValueError as e:
+            return f"invalid security.token_encryption_key: {e}"
+        if self._redirect_mode() not in ("callback", "paste"):
+            return "auth.oauth_redirect must be auto, paste or callback"
+        return None
+
+    def _redirect_mode(self) -> str:
+        # auto = redirect straight to this maubot's public_url (localhost or not). Datadog only
+        # needs the URL allow-listed when it isn't loopback; paste is the opt-in fallback.
+        mode = (self.config["auth.oauth_redirect"] or "auto").strip().lower()
+        return "callback" if mode == "auto" else mode
+
     async def _start(self) -> None:
         self.config.load_and_update()
-        if self.webapp_url is None:
-            raise RuntimeError("bitsai requires `webapp: true` and a maubot public_url")
-        try:
-            box = SecretBox(self.config["security.token_encryption_key"] or "")
-        except ValueError as e:
-            raise RuntimeError(f"bitsai: invalid security.token_encryption_key: {e}") from None
+        problem = self._config_problem()
+        if problem:
+            raise RuntimeError(f"bitsai: {problem}")
+        box = SecretBox(self.config["security.token_encryption_key"])
         self.site = Site(self.config["datadog.site"],
                          (self.config["datadog.subdomain"] or "").strip().lower())
         loopback = self.webapp_url.host in _LOOPBACK_HOSTS
-        mode = (self.config["auth.oauth_redirect"] or "auto").strip().lower()
-        if mode == "auto":
-            mode = "callback" if loopback else "paste"
-        if mode not in ("callback", "paste"):
-            raise RuntimeError("bitsai: auth.oauth_redirect must be auto, paste or callback")
-        if mode == "callback" and not loopback:
-            self.log.warning("auth.oauth_redirect=callback with a non-localhost public_url: "
-                             "Datadog will reject the redirect URI; use auto or paste")
-        self.oauth_paste = mode == "paste"
+        self.oauth_paste = self._redirect_mode() == "paste"
+        callback_url = str(self.webapp_url / "oauth" / "callback")
+        redirect_uri = PASTE_REDIRECT_URI if self.oauth_paste else callback_url
+        setting = (self.config["auth.oauth_redirect"] or "auto").strip().lower()
+        if self.oauth_paste:
+            self.log.info("OAuth sign-in: paste mode (auth.oauth_redirect=%s), redirect_uri=%s "
+                          "(fixed loopback). To have Datadog redirect here instead, set "
+                          "auth.oauth_redirect: callback and allow-list %s in Datadog",
+                          setting, redirect_uri, callback_url)
+        else:
+            self.log.info("OAuth sign-in: callback mode (auth.oauth_redirect=%s), redirect_uri=%s "
+                          "(from maubot server.public_url)", setting, redirect_uri)
+        if not self.oauth_paste and not loopback:
+            # Datadog accepts loopback redirects by default; anything else must be allow-listed
+            # per org, or /authorize fails with "Mismatching redirect URI" (docs/FINDINGS.md §5).
+            self.log.info("auth.oauth_redirect=callback: a Datadog org admin must add %s to "
+                          "Organization Settings > MCP Server > MCP OAuth Redirect URLs",
+                          callback_url)
         if self.webapp_url.scheme != "https" and not loopback:
             self.log.warning("maubot public_url is not https; webhooks will be insecure")
 
@@ -159,8 +198,7 @@ class BitsPlugin(Plugin):
         )
         self.oauth = DatadogOAuth(
             self.http, self.database, box, self.site,
-            redirect_uri=(PASTE_REDIRECT_URI if self.oauth_paste
-                          else str(self.webapp_url / "oauth" / "callback")),
+            redirect_uri=redirect_uri,
             client_name=client_name, log=self.log.getChild("oauth"),
         )
         self.tokens = TokenManager(self.links, self.oauth)
@@ -646,8 +684,13 @@ class BitsPlugin(Plugin):
                 f"Linked as {who}. Not you? Run `!{self.cmd} logout` now."))
         except Exception:
             self.log.exception("Could not send link confirmation")
-        return self._page(200, "Signed in", "You're linked. You can close this tab and return "
-                          "to Matrix.")
+        # Name the Matrix account: if someone else started this sign-in and sent you the link,
+        # this is where you notice that your Datadog access went to them.
+        return self._page(200, "Signed in",
+                          f"Your Datadog account is now linked to the Matrix account "
+                          f"<b>{html.escape(done.link.mxid)}</b>. If that isn't you, revoke this "
+                          f"app's access in your Datadog personal settings now. Otherwise you "
+                          f"can close this tab and return to Matrix.")
 
     @staticmethod
     def _page(status: int, title: str, text: str) -> aioweb.Response:

@@ -288,7 +288,7 @@ The command and web layers must also:
 1. ~~Bits Chat via MCP is unverified.~~ **Resolved: it works.** Remaining risk: the MCP server is "under significant development", so its tool schemas may change. Mitigations:
    - Keep schema-dependent code inside `backend/mcp.py`.
    - Add a start-up check that compares `tools/list` with the expected schemas and warns on drift.
-2. ~~OAuth for self-hosted open source.~~ **Mostly resolved:** dynamic client registration accepts arbitrary callback URLs. The open items are in Phase 0b.
+2. ~~OAuth for self-hosted open source.~~ **Resolved:** registration accepts any callback URL, but `/authorize` only accepts loopback URLs plus whatever the org admin has listed under Organization Settings > MCP Server > MCP OAuth Redirect URLs. So the default (`auth.oauth_redirect: auto`) is a direct callback to the maubot's `public_url`, which the org admin must list. Loopback paste-back (`paste`) is the fallback when that isn't possible (`docs/FINDINGS.md` §5).
 3. Investigation status values are only partly known. Treat unknown statuses as non-terminal and time out after N minutes.
 4. FED sites are unsupported by MCP. Document as unsupported for chat and use REST-only investigations there, if the API exists.
 5. Bits quota and cost are borne by each deployer's org. Rate limits are configurable.
