@@ -81,7 +81,8 @@ async def test_thread_messages_order_filter_and_edits():
     ]
     m, client = thread_client(root, newest_first)
     out = await m.get_thread_messages(ROOM, "$r", limit=10)
-    assert out == [("@a:x", "root"), ("@b:x", "hello"), ("@bot:x", "new")]
+    assert out == [("@a:x", "root"), ("@b:x", "hello"), ("@bot:x", "new"),
+                   ("@b:x", '[image, "img"]')]
     call = client.api.request.await_args
     assert "relations" in str(call.args[1]) and "m.thread" in str(call.args[1])
     assert call.kwargs["query_params"] == {"limit": "10", "dir": "b"}
@@ -120,3 +121,40 @@ async def test_first_reminder_sent_right_after_boot(monkeypatch):
     m, client, _ = make(is_dm=False, open_result=(DM, True))
     await m.notify_login_needed(ROOM, USER)
     assert [r for r, _ in bodies(client)] == [ROOM]
+
+
+async def test_get_event_decrypts_and_is_best_effort():
+    from types import SimpleNamespace
+
+    from mautrix.types import EventType
+
+    m, client, _ = make(is_dm=True)
+    plain = SimpleNamespace(type=EventType.ROOM_MESSAGE)
+    client.get_event = AsyncMock(return_value=plain)
+    assert await m.get_event(ROOM, "$e") is plain
+
+    enc = SimpleNamespace(type=EventType.ROOM_ENCRYPTED)
+    client.get_event = AsyncMock(return_value=enc)
+    client.crypto = MagicMock()
+    client.crypto.decrypt_megolm_event = AsyncMock(return_value=plain)
+    assert await m.get_event(ROOM, "$e") is plain
+
+    client.crypto.decrypt_megolm_event = AsyncMock(side_effect=RuntimeError("no session"))
+    assert await m.get_event(ROOM, "$e") is None
+    client.get_event = AsyncMock(side_effect=RuntimeError("403"))
+    assert await m.get_event(ROOM, "$e") is None
+
+
+async def test_thread_with_image_root_gives_mxc_in_context():
+    root = {**raw_msg("$r", "@a:x", "lag.png", msgtype="m.image"),
+            "content": {"msgtype": "m.image", "body": "lag.png", "url": "mxc://x/Media1",
+                        "info": {"mimetype": "image/png"}}}
+    enc_file = {**raw_msg("$f", "@b:x", "trace.log", msgtype="m.file"),
+                "content": {"msgtype": "m.file", "body": "trace.log",
+                            "file": {"url": "mxc://x/Enc1", "key": {"k": "SECRETKEY"},
+                                     "iv": "SECRETIV", "hashes": {}, "v": "v2"}}}
+    m, _ = thread_client(root, [enc_file])
+    out = await m.get_thread_messages(ROOM, "$r")
+    assert out[0][0] == "@a:x" and "mxc://x/Media1" in out[0][1] and "image/png" in out[0][1]
+    assert "mxc://x/Enc1" in out[1][1]
+    assert "SECRETKEY" not in str(out) and "SECRETIV" not in str(out)

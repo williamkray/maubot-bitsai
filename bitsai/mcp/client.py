@@ -51,7 +51,7 @@ class McpClient:
         toolsets: Sequence[str],
         log: logging.Logger,
         client_name: str = "maubot-bitsai",
-        client_version: str = "0.1.1",
+        client_version: str = "0.1.2",
     ) -> None:
         self._http = http
         self._url = f"{url}?toolsets={quote(','.join(toolsets), safe=',')}" if toolsets else url

@@ -106,7 +106,7 @@ async def plugin(dd, monkeypatch):
 
 
 def make_evt(body, room=ROOM, sender=ALICE, thread=None, edit=None, mentions=None,
-             msgtype=MessageType.TEXT):
+             msgtype=MessageType.TEXT, reply_to=None, falling_back=False):
     evt = MagicMock()
     evt.room_id, evt.sender, evt.event_id = room, sender, "$evt"
     evt.reply = AsyncMock()
@@ -114,6 +114,8 @@ def make_evt(body, room=ROOM, sender=ALICE, thread=None, edit=None, mentions=Non
     c.body, c.msgtype = body, msgtype
     c.get_thread_parent.return_value = thread
     c.get_edit.return_value = edit
+    c.get_reply_to.return_value = reply_to
+    c.relates_to.is_falling_back = falling_back
     c.serialize.return_value = {"body": body, "m.mentions": {"user_ids": mentions or []}}
     return evt
 
@@ -457,7 +459,7 @@ async def test_context_admin_toggles_and_bad_state(plugin):
     evt = make_evt("x")
     await run(BitsPlugin.context_cmd, plugin, evt, "off")
     plugin.room_settings.set_thread_context.assert_awaited_once_with(ROOM, False)
-    assert "stored in their Bits history" in evt.reply.call_args.args[0]
+    assert "stored in the asker's Bits history" in evt.reply.call_args.args[0]
     await run(BitsPlugin.context_cmd, plugin, make_evt("x"), "maybe")
     assert plugin.room_settings.set_thread_context.await_count == 1
 
@@ -612,7 +614,7 @@ async def test_edit_and_non_text_ignored(plugin, asks):
 
 async def test_dm_message_triggers_ask(plugin, asks):
     await plugin.on_message(make_evt("what is up", room=DM))
-    asks.assert_awaited_once_with(DM, "$evt", ALICE, "what is up")
+    asks.assert_awaited_once_with(DM, "$evt", ALICE, "what is up", reply_context=None)
 
 
 async def test_shared_room_without_mention_no_ask(plugin, asks):
@@ -641,7 +643,7 @@ async def test_thread_followup_only_for_own_conversation(plugin, asks):
 
     plugin.conversations.get = AsyncMock(side_effect=get)
     await plugin.on_message(make_evt("more?", thread="$root"))
-    asks.assert_awaited_once_with(ROOM, "$root", ALICE, "more?")
+    asks.assert_awaited_once_with(ROOM, "$root", ALICE, "more?", reply_context=None)
     asks.reset_mock()
     await plugin.on_message(make_evt("no mention", thread="$root", sender="@eve:x"))
     asks.assert_not_called()
@@ -653,7 +655,7 @@ async def test_thread_mention_by_non_owner_asks(plugin, asks):
     await plugin.on_message(
         make_evt("hey bot, join", thread="$root", sender="@eve:x", mentions=[BOT])
     )
-    asks.assert_awaited_once_with(ROOM, "$root", "@eve:x", "hey bot, join")
+    asks.assert_awaited_once_with(ROOM, "$root", "@eve:x", "hey bot, join", reply_context=None)
 
 
 # ---------------------------------------------------------------- 10 on_reaction
@@ -828,3 +830,76 @@ async def test_paste_mode_log_names_setting_and_callback_url(caplog):
     msg = next(r.getMessage() for r in caplog.records if "OAuth sign-in" in r.getMessage())
     assert "paste mode (auth.oauth_redirect=paste)" in msg
     assert url + "oauth/callback" in msg and "public_url" not in msg
+
+
+# ---------------------------------------------------------------- reply context
+
+def replied_image():
+    from mautrix.types import Event
+
+    return Event.deserialize({
+        "type": "m.room.message", "event_id": "$img", "sender": "@carol:x", "room_id": ROOM,
+        "origin_server_ts": 1_764_000_000_000,
+        "content": {"msgtype": "m.image", "body": "lag.png", "url": "mxc://x/Media1"},
+    })
+
+
+@pytest.fixture
+def shared_room_reply(plugin, asks):
+    plugin.client.get_joined_members.return_value = members(BOT, ALICE, "@eve:x")
+    plugin.messenger.get_event = AsyncMock(return_value=replied_image())
+    return plugin
+
+
+async def test_mention_in_reply_sends_replied_message_as_context(shared_room_reply, asks):
+    await shared_room_reply.on_message(
+        make_evt("bot: why is this slow?", mentions=[BOT], reply_to="$img"))
+    shared_room_reply.messenger.get_event.assert_awaited_once_with(ROOM, "$img")
+    args, kw = asks.await_args
+    assert args == (ROOM, "$evt", ALICE, "why is this slow?")
+    ctx = kw["reply_context"]
+    assert f"which I ({ALICE}) replied to" in ctx
+    assert "From: @carol:x" in ctx and "mxc://x/Media1" in ctx
+
+
+async def test_bare_mention_in_reply_asks_about_the_message(shared_room_reply, asks):
+    evt = make_evt("bot:", mentions=[BOT], reply_to="$img")
+    await shared_room_reply.on_message(evt)
+    args, kw = asks.await_args
+    assert args[3] == "Please look into the message I replied to."
+    assert "From: @carol:x" in kw["reply_context"]
+    evt.reply.assert_not_awaited()
+
+
+async def test_reply_context_respects_room_context_toggle(shared_room_reply, asks):
+    await shared_room_reply.room_settings.set_thread_context(ROOM, False)
+    await shared_room_reply.on_message(
+        make_evt("bot: why?", mentions=[BOT], reply_to="$img"))
+    assert asks.await_args.kwargs["reply_context"] is None
+    shared_room_reply.messenger.get_event.assert_not_awaited()
+
+
+async def test_thread_fallback_reply_is_not_context(shared_room_reply, asks):
+    shared_room_reply.conversations.get = AsyncMock(return_value=None)
+    await shared_room_reply.on_message(make_evt(
+        "bot: hm", mentions=[BOT], thread="$root", reply_to="$prev", falling_back=True))
+    assert asks.await_args.kwargs["reply_context"] is None
+    shared_room_reply.messenger.get_event.assert_not_awaited()
+
+
+async def test_unreadable_replied_message_still_asks(shared_room_reply, asks):
+    shared_room_reply.messenger.get_event = AsyncMock(return_value=None)
+    await shared_room_reply.on_message(
+        make_evt("bot: why?", mentions=[BOT], reply_to="$gone"))
+    args, kw = asks.await_args
+    assert args[3] == "why?" and kw["reply_context"] is None
+
+
+async def test_investigate_in_reply_includes_context(shared_room_reply):
+    shared_room_reply.investigations.start_general = AsyncMock()
+    evt = make_evt("!bits investigate slow media", reply_to="$img")
+    await run(BitsPlugin.investigate_cmd, shared_room_reply, evt, "slow media")
+    args, kw = shared_room_reply.investigations.start_general.await_args
+    assert args[3] == "slow media"
+    assert kw["reply_context"].startswith("\n\nThe requester asked this in reply to")
+    assert "mxc://x/Media1" in kw["reply_context"]

@@ -39,10 +39,16 @@ OMITTED = "[earlier messages omitted]"
 _BOT_NOTICE_PREFIXES = ("Bits AI is thinking", "⚠️", "Still working on the previous question")
 
 
+def with_reply_context(text: str, reply_context: str | None) -> str:
+    return f"{reply_context}\nMy question: {text}" if reply_context else text
+
+
 def build_context_message(
-    messages: list[tuple[str, str]], sender: str, text: str, max_chars: int = CONTEXT_MAX_CHARS
+    messages: list[tuple[str, str]], sender: str, text: str, max_chars: int = CONTEXT_MAX_CHARS,
+    reply_context: str | None = None,
 ) -> str | None:
-    """Wrap ``text`` with a preamble of the thread's prior messages, or None if nothing to add.
+    """Wrap ``text`` with a preamble of the thread's prior messages (and the replied-to message,
+    if any), or None if there's nothing to add.
 
     Excludes the triggering message and the bot's thinking/error notices; keeps the most recent
     lines when over ``max_chars``."""
@@ -58,7 +64,7 @@ def build_context_message(
         if body and body.strip() and not body.strip().startswith(_BOT_NOTICE_PREFIXES)
     ]
     if not lines:
-        return None
+        return with_reply_context(text, reply_context) if reply_context else None
     joined = "\n".join(lines)
     if len(joined) > max_chars:
         budget = max_chars - len(OMITTED) - 1
@@ -69,7 +75,8 @@ def build_context_message(
     return (
         "Context: the following is a shared Matrix thread I'm part of. Messages from other "
         "people and earlier AI answers are included for context only.\n---\n"
-        f"{joined}\n---\nMy question: {text}"
+        f"{joined}\n---\n" + (f"{reply_context}\n" if reply_context else "")
+        + f"My question: {text}"
     )
 
 
@@ -118,7 +125,12 @@ class ChatService:
 
     # ------------------------------------------------------------------ entry points
 
-    async def ask(self, room_id: RoomID, thread_root: EventID, sender: UserID, text: str) -> None:
+    async def ask(
+        self, room_id: RoomID, thread_root: EventID, sender: UserID, text: str,
+        *, reply_context: str | None = None,
+    ) -> None:
+        """``reply_context``: description of the message the question replies to (the plugin
+        builds it, and only when the room allows sharing context)."""
         key = (str(room_id), str(thread_root), str(sender))
         if key in self._busy:
             await self.messenger.send(
@@ -142,9 +154,9 @@ class ChatService:
                 return
             owners = await self.conversations.owners(room_id, thread_root)
             shared = any(o != sender for o in owners)
-            message = text
+            message = with_reply_context(text, reply_context)
             if conv is None:
-                message = await self._seed(room_id, thread_root, sender, text)
+                message = await self._seed(room_id, thread_root, sender, text, reply_context)
             await self._run(
                 backend,
                 room_id,
@@ -159,20 +171,23 @@ class ChatService:
             self._busy.discard(key)
 
     async def _seed(
-        self, room_id: RoomID, thread_root: EventID, sender: UserID, text: str
+        self, room_id: RoomID, thread_root: EventID, sender: UserID, text: str,
+        reply_context: str | None = None,
     ) -> str:
         """First message of a new conversation: prepend visible thread context if enabled."""
+        plain = with_reply_context(text, reply_context)
         try:
             if self.settings is not None:
                 if not (await self.settings.get(room_id)).thread_context_enabled:
-                    return text
+                    return plain
             msgs = await self.messenger.get_thread_messages(
                 room_id, thread_root, limit=CONTEXT_LIMIT
             )
-            return build_context_message(msgs, sender, text) or text
+            return build_context_message(msgs, sender, text,
+                                         reply_context=reply_context) or plain
         except Exception:
             self.log.exception("thread context failed")
-            return text
+            return plain
 
     async def on_reaction(
         self, room_id: RoomID, target_event_id: EventID, sender: UserID, key: str

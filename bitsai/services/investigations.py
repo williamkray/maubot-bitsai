@@ -75,8 +75,11 @@ class InvestigationService:
     # ------------------------------------------------------------------ start
 
     async def start_general(
-        self, room_id: RoomID, thread_root: EventID, sender: str, description: str
+        self, room_id: RoomID, thread_root: EventID, sender: str, description: str,
+        *, reply_context: str | None = None,
     ) -> str | None:
+        """``reply_context`` (already formatted) is appended after the user's description and
+        trimmed to fit MAX_DESCRIPTION; only the user's own text is length-checked."""
         description = (description or "").strip()
         if not description:
             await self._say(room_id, thread_root, render_error("Describe what to investigate."))
@@ -90,6 +93,10 @@ class InvestigationService:
                 ),
             )
             return None
+        if reply_context:
+            room = MAX_DESCRIPTION - len(description)
+            if room > 200:  # skip context that would be cut to uselessness
+                description += reply_context[:room]
         return await self._start(
             room_id, thread_root, sender, lambda b: b.investigation_start_general(description)
         )

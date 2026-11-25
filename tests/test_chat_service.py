@@ -319,3 +319,36 @@ async def test_busy_guard(env):
     gate.set()
     await t
     assert m.edits[-1][2].body == "a"
+
+
+RC = "Context: <reply context block>\n---\nX\n---"
+
+
+async def test_reply_context_on_new_and_followup_turns(env):
+    svc, m, backends, _, _ = env
+    b = backends[ALICE] = Backend(
+        [turn(ChatStatus.COMPLETED, message="a"), turn(ChatStatus.COMPLETED, message="b")]
+    )
+    await svc.ask(R, T, ALICE, "why slow?", reply_context=RC)
+    assert b.send_calls[0][0] == f"{RC}\nMy question: why slow?"
+    await svc.ask(R, T, ALICE, "and now?", reply_context=RC)
+    assert b.send_calls[1] == (f"{RC}\nMy question: and now?", "c1", None)
+
+
+async def test_reply_context_combined_with_thread_context(env):
+    svc, m, a, b = _two(env)
+    await svc.ask(R, T, ALICE, "alice q")
+    m.thread_messages[T] = [(ALICE, "alice q"), ("@bot:x", "a1")]
+    await svc.ask(R, T, BOB, "bob q", reply_context=RC)
+    msg = b.send_calls[0][0]
+    assert msg.startswith("Context: the following is a shared Matrix thread")
+    assert f"---\n{RC}\nMy question: bob q" in msg and msg.count("My question") == 1
+
+
+async def test_reply_context_kept_when_thread_context_disabled_for_service(env, db):
+    # The plugin decides whether reply context is allowed; the service just forwards it.
+    svc, m, backends, _, _ = env
+    b = backends[ALICE] = Backend([turn(ChatStatus.COMPLETED, message="a")])
+    await RoomSettingsRepo(db).set_thread_context(R, False)
+    await svc.ask(R, T, ALICE, "q", reply_context=RC)
+    assert b.send_calls[0][0] == f"{RC}\nMy question: q"

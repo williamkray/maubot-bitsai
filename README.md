@@ -66,7 +66,12 @@ address back to the bot. Or use `!bits login token <PAT>`.
 | `!bits whoami` / `!bits logout` | Show or remove your linked account |
 | `!bits webhook` / `!bits webhook revoke` | Room admins: create or revoke the alert webhook (setup sent by DM) |
 | `!bits unfurl on\|off` | Room admins: Datadog link previews |
-| `!bits context on\|off` | Room admins: give people who join a thread its earlier messages as context |
+| `!bits context on\|off` | Room admins: share thread messages and replied-to messages with Bits as context (default on) |
+
+**Replies:** ask (`@bits …`, `!bits ask`, `!bits investigate`) in reply to any message, and
+Bits gets that message as context: sender MXID, time, room and event IDs, text, and for media the
+filename, type, size and `mxc://` ID. Bits can't open the file itself. A bare `@bits` in reply
+asks it to look into that message.
 
 **Reactions:** 🔍 on an alert starts an investigation, 💬 asks Bits about it. ✅ / ❌ approve or
 deny an action Bits wants to take.

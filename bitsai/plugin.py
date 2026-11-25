@@ -45,6 +45,12 @@ from .db import upgrade_table
 from .matrix.mentions import extract_question
 from .matrix.messenger import MatrixMessenger
 from .matrix.render import render_notice
+from .matrix.reply_context import (
+    chat_preamble,
+    describe_message,
+    investigation_suffix,
+    reply_target,
+)
 from .mcp.client import McpClient
 from .ratelimit import RateLimiter
 from .repos import AlertMessageRepo, ConversationRepo, InvestigationRepo, RoomSettingsRepo
@@ -55,6 +61,7 @@ from .services.unfurl import UnfurlService
 from .sites import Site
 
 ADMIN_POWER_LEVEL = 50
+REPLY_ONLY_QUESTION = "Please look into the message I replied to."
 _LOOPBACK_HOSTS = ("localhost", "127.0.0.1", "::1")
 MAX_WEBHOOK_BODY = 64 * 1024
 _NO_STORE = {
@@ -332,12 +339,31 @@ class BitsPlugin(Plugin):
         return self.user_limit.allow(evt.sender) and self.room_limit.allow(evt.room_id)
 
     async def _ask_guarded(self, room_id: RoomID, thread_root: EventID, sender: UserID,
-                           text: str) -> None:
+                           text: str, evt: MessageEvent | None = None) -> None:
+        """``evt``: the triggering message; if it replies to another message, that message
+        is described to Bits as context."""
         if not (self.user_limit.allow(sender) and self.room_limit.allow(room_id)):
             await self.messenger.send(room_id, _notice("Slow down a little — rate limit hit."),
                                       thread_root=thread_root)
             return
-        await self.chat.ask(room_id, thread_root, sender, text)
+        ctx = await self._reply_context(evt) if evt is not None else None
+        await self.chat.ask(room_id, thread_root, sender, text,
+                            reply_context=chat_preamble(ctx, sender) if ctx else None)
+
+    async def _reply_context(self, evt: MessageEvent) -> str | None:
+        """Describe the message ``evt`` deliberately replies to, if the room shares context
+        with Bits (room admins: ``context on|off``). Best-effort: None on any failure."""
+        target = reply_target(evt.content)
+        if not target:
+            return None
+        try:
+            if not (await self.room_settings.get(evt.room_id)).thread_context_enabled:
+                return None
+        except Exception:
+            self.log.exception("room settings lookup failed")
+            return None
+        replied = await self.messenger.get_event(evt.room_id, target)
+        return describe_message(replied, bot_mxid=self.client.mxid)
 
     async def _investigate_alert(self, room_id, thread_root, sender, alert) -> None:
         if not (self.user_limit.allow(sender) and self.room_limit.allow(room_id)):
@@ -364,8 +390,11 @@ class BitsPlugin(Plugin):
             f"- `!{c} logout` / `!{c} whoami`\n"
             f"- `!{c} webhook` / `!{c} webhook revoke` — room admins: Datadog alert webhook\n"
             f"- `!{c} unfurl on|off` — room admins: Datadog link previews\n"
-            f"- `!{c} context on|off` — room admins: seed new thread participants' Bits "
-            f"conversations with the thread's messages\n\n"
+            f"- `!{c} context on|off` — room admins: share thread messages and replied-to "
+            f"messages with Bits as context\n\n"
+            f"Reply to a message (text, image, file…) when you ask or investigate, and Bits gets "
+            f"that message as context: who sent it, when, and media IDs (not the file itself). "
+            f"A bare mention in reply asks Bits to look into it.\n\n"
             f"In a shared thread, everyone gets their own Bits conversation using their own "
             f"Datadog access.\n\n"
             f"React 🔍 on an alert to investigate it, 💬 to ask Bits about it."
@@ -377,7 +406,7 @@ class BitsPlugin(Plugin):
         if not question.strip():
             await evt.reply(f"Usage: `!{self.cmd} ask <question>`")
             return
-        await self._ask_guarded(evt.room_id, self._thread_root(evt), evt.sender, question)
+        await self._ask_guarded(evt.room_id, self._thread_root(evt), evt.sender, question, evt)
 
     @bits.subcommand("investigate", help="Start a Bits AI SRE investigation")
     @command.argument("description", pass_raw=True)
@@ -385,8 +414,10 @@ class BitsPlugin(Plugin):
         if not self._allowed(evt):
             await evt.reply("Slow down a little — rate limit hit.")
             return
+        ctx = await self._reply_context(evt)
         await self.investigations.start_general(
-            evt.room_id, self._thread_root(evt), evt.sender, description
+            evt.room_id, self._thread_root(evt), evt.sender, description,
+            reply_context=investigation_suffix(ctx) if ctx else None,
         )
 
     @bits.subcommand("steer", help="Steer the investigation in this thread")
@@ -581,7 +612,7 @@ class BitsPlugin(Plugin):
             "everyone in this room." if state == "on" else "Link previews off."
         )
 
-    @bits.subcommand("context", help="Room admins: seed joiners' Bits chats with thread context")
+    @bits.subcommand("context", help="Room admins: share thread/replied-to messages with Bits")
     @command.argument("state")
     async def context_cmd(self, evt: MessageEvent, state: str) -> None:
         if state not in ("on", "off"):
@@ -591,13 +622,14 @@ class BitsPlugin(Plugin):
             await evt.reply("Only room admins can change thread context.")
             return
         await self.room_settings.set_thread_context(evt.room_id, state == "on")
+        what = ("people joining a thread get their own Bits conversation seeded with the "
+                "thread's visible messages, and questions sent as a reply include the replied-to "
+                "message (sender, time, text, media IDs). That context is stored in the asker's "
+                "Bits history.")
         await evt.reply(
-            "Thread context on. When on, people joining a thread get their own Bits "
-            "conversation seeded with the thread's visible messages; that context is stored "
-            "in their Bits history." if state == "on" else
-            "Thread context off. People joining a thread start with a plain question. "
-            "(When on, people joining a thread get their own Bits conversation seeded with "
-            "the thread's visible messages; that context is stored in their Bits history.)"
+            f"Context on. When on, {what}" if state == "on" else
+            "Context off. Bits only sees each question itself, not other people's messages. "
+            f"(When on, {what})"
         )
 
     # ------------------------------------------------------------------ passive events
@@ -631,19 +663,21 @@ class BitsPlugin(Plugin):
             conv = await self.conversations.get(evt.room_id, thread_parent, evt.sender)
             if conv:
                 await self._ask_guarded(evt.room_id, thread_parent, evt.sender,
-                                        question or body)
+                                        question or body, evt)
                 return
+        if question == "" and reply_target(evt.content):
+            question = REPLY_ONLY_QUESTION  # bare "@bits" in reply to a message
         if question is not None:
             if not question:
                 await evt.reply(f"Ask me anything about your Datadog org, e.g. "
                                 f"\"{self._displayname or 'bits'}: why is checkout slow?\" "
                                 f"(`!{self.cmd} help` for more).")
                 return
-            await self._ask_guarded(evt.room_id, self._thread_root(evt), evt.sender, question)
+            await self._ask_guarded(evt.room_id, self._thread_root(evt), evt.sender, question, evt)
             return
         if self.config["chat.respond_in_dms"] and await self._is_private_dm(evt.room_id,
                                                                            evt.sender):
-            await self._ask_guarded(evt.room_id, self._thread_root(evt), evt.sender, body)
+            await self._ask_guarded(evt.room_id, self._thread_root(evt), evt.sender, body, evt)
 
     @event.on(EventType.REACTION)
     async def on_reaction(self, evt: ReactionEvent) -> None:

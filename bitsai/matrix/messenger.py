@@ -20,6 +20,7 @@ from mautrix.types import (
 )
 
 from .render import render_notice
+from .reply_context import media_summary
 
 NOTIFY_COOLDOWN_S = 600
 
@@ -97,21 +98,34 @@ class MatrixMessenger:
         except Exception:
             return []
 
+    async def get_event(self, room_id: RoomID, event_id: EventID) -> Any | None:
+        """Best-effort: the event, decrypted if needed. None on any error."""
+        try:
+            return await self._decrypt(await self._client.get_event(room_id, event_id))
+        except Exception:
+            return None
+
+    async def _decrypt(self, evt: Any) -> Any | None:
+        if evt is None or evt.type != EventType.ROOM_ENCRYPTED:
+            return evt
+        crypto = getattr(self._client, "crypto", None)
+        if not crypto:
+            return None
+        try:
+            return await crypto.decrypt_megolm_event(evt)
+        except Exception:
+            return None
+
     async def _parse_event(
         self, evt: Any, raw: dict | None = None
     ) -> tuple[UserID, str] | None:
-        if evt is None:
+        evt = await self._decrypt(evt)
+        if not isinstance(evt, MessageEvent) or evt.type not in (EventType.ROOM_MESSAGE,
+                                                                 EventType.STICKER):
             return None
-        if evt.type == EventType.ROOM_ENCRYPTED:
-            crypto = getattr(self._client, "crypto", None)
-            if not crypto:
-                return None
-            try:
-                evt = await crypto.decrypt_megolm_event(evt)
-            except Exception:
-                return None
-        if not isinstance(evt, MessageEvent) or evt.type != EventType.ROOM_MESSAGE:
-            return None
+        media = media_summary(evt)  # images/files: identifiers + metadata, never the file
+        if media:
+            return evt.sender, media
         content = evt.content
         if getattr(content, "msgtype", None) not in (
             MessageType.TEXT,

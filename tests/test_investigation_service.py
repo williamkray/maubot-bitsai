@@ -290,3 +290,31 @@ async def test_no_new_polls_after_stop(env):
     await svc.resume_open()  # e.g. a resume racing with plugin stop
     assert not svc._tasks
     assert (await repo.get("i1")).finished_at is None
+
+
+async def test_reply_context_appended_and_trimmed(env):
+    from bitsai.services.investigations import MAX_DESCRIPTION
+
+    make, m, repo, _ = env
+    calls = []
+
+    class Capture(FakeBackend):
+        async def investigation_start_general(self, description, **kw):
+            calls.append(description)
+            return f"i{len(calls)}"
+
+        async def investigation_get(self, iid):
+            return Investigation(iid, InvestigationStatus.parse("conclusive"), "conclusive")
+
+    svc, _ = make({ALICE: Capture([CONCL])})
+    await svc.start_general(ROOM, THREAD, ALICE, "why 500s", reply_context="\n\nCTX")
+    assert calls[-1] == "why 500s\n\nCTX"
+    await svc.join()
+    long_desc = "d" * (MAX_DESCRIPTION - 300)
+    await svc.start_general(ROOM, "$t2", ALICE, long_desc, reply_context="C" * 1000)
+    assert len(calls[-1]) == MAX_DESCRIPTION and calls[-1].startswith(long_desc)
+    await svc.join()
+    nearly_full = "d" * (MAX_DESCRIPTION - 50)
+    await svc.start_general(ROOM, "$t3", ALICE, nearly_full, reply_context="C" * 1000)
+    assert calls[-1] == nearly_full  # too little room: context skipped, not mangled
+    await svc.join()
